@@ -40,7 +40,10 @@ defmodule Tenerves.MixProject do
     [
       {:nerves, "~> 1.3", runtime: false},
       {:shoehorn, "~> 0.4"},
-      {:ring_logger, "~> 0.4"}
+      {:ring_logger, "~> 0.4"},
+      {:quantum, "~> 2.3"},
+      {:timex, "~> 3.0"},
+      {:ex_tesla, path: "../ex_tesla"}
     ] ++ deps(@target)
   end
 

@@ -15,17 +15,11 @@ defmodule Tenerves.Application do
   end
 
   # List all child processes to be supervised
-  def children("host") do
-    [
-      # Starts a worker by calling: Tenerves.Worker.start_link(arg)
-      # {Tenerves.Worker, arg},
-    ]
-  end
-
   def children(_target) do
     [
       # Starts a worker by calling: Tenerves.Worker.start_link(arg)
       # {Tenerves.Worker, arg},
+      {TeNerves.Scheduler, []}
     ]
   end
 end

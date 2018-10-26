@@ -15,8 +15,47 @@ config :nerves, :firmware, rootfs_overlay: "rootfs_overlay"
 # involved with firmware updates.
 
 config :shoehorn,
-  init: [:nerves_runtime],
-  app: Mix.Project.config()[:app]
+       init: [
+         :nerves_runtime,
+         :nerves_network,
+         :nerves_time,
+         :nerves_init_gadget,
+         :lifx,
+         {RoboticaNerves.Application, :config, []},
+         :robotica
+       ],
+       app: Mix.Project.config()[:app]
+
+config :nerves_network,
+       regulatory_domain: "AU"
+
+config :nerves_network, :default,
+       wlan0: [
+         ssid: System.get_env("NERVES_NETWORK_SSID"),
+         psk: System.get_env("NERVES_NETWORK_PSK"),
+         key_mgmt: String.to_atom(System.get_env("NERVES_NETWORK_MGMT"))
+       ],
+       eth0: [
+         ipv4_address_method: :dhcp
+       ]
+
+config :nerves_time, :servers, [
+  "0.pool.ntp.org",
+  "1.pool.ntp.org",
+  "2.pool.ntp.org",
+  "3.pool.ntp.org"
+]
+
+config :nerves_firmware_ssh,
+       authorized_keys: [
+         "ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAo9J3VtrQldIJeQR6ilEHLiYdOEOlanfKghN/ZOhd1B/TDD94vWo7R+M3shJDkPGR8qjPCGDUSZSg8G1bzPhMyAaTgLejdRk9yPt5Z/QmDs6rYk/RHCEl+9GTQEjBVbaUH0oeMsIiB1sgBzCj4Wcfd8cJwuWjzWQdwgMwApwOEV2Gpg6ZWDzfNVoe7YwgLZVvPngZCXNWQJ/9HRzXPEi1Nz0Gc2zciZS8FkrqG4VsWkRH8KT/4AJm0PWz7aY+OqnOF9Fn6hBwpnB3LO+a0HEFEbPdCB9V5ORH+xj6smkf/TMmq16oCexGyX3vbnKfKrRS5Vv5oxkjpHQyvemmG6gc6Q== /home/brian/.ssh/id_rsa"
+       ]
+
+config :nerves_init_gadget,
+       ifname: "wlan0",
+       mdns_domain: :hostname,
+       ssh_console_port: 22,
+       address_method: :dhcp
 
 # Use Ringlogger as the logger backend and remove :console.
 # See https://hexdocs.pm/ring_logger/readme.html for more information on
@@ -24,8 +63,18 @@ config :shoehorn,
 
 config :logger, backends: [RingLogger]
 
+config :tenerves,
+  output_directory: "./",
+  vin: System.get_env("VIN"),
+
+config :tenerves, TeNerves.Scheduler,
+  jobs: [
+    # Every 15 minutes
+    {"*/15 * * * *",   fn -> TeNerves.poll_and_update() end},
+  ]
+
 # Import target specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 # Uncomment to use target specific configurations
 
-# import_config "#{Mix.Project.config[:target]}.exs"
+import_config "secrets.exs"
