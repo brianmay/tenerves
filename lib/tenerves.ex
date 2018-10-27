@@ -2,86 +2,113 @@ defmodule TeNerves do
   @moduledoc """
   Documentation for TeNerves.
   """
-  @output_directory Application.get_env(:tenerves, :output_directory)
+  import Ecto.Query
+  require Logger
+
   @vin Application.get_env(:tenerves, :vin)
 
-  def poll_tesla(client, vin, previous_state) do
-    {:ok, result} = ExTesla.list_all_vehicles(client)
-    result = Enum.filter(result, fn vehicle -> vehicle["vin"] == vin end)
-    1 = length(result)
+  defp decimal(nil), do: nil
+  defp decimal(v), do: Decimal.new(v)
 
-    vehicle = hd(result)
+  defp get_vehicle_by_vin(client, vin) do
+    case ExTesla.list_all_vehicles(client) do
+      {:ok, result} ->
+        result = Enum.filter(result, fn vehicle -> vehicle["vin"] == vin end)
 
-    {:ok, vehicle_state} = ExTesla.get_vehicle_state(client, vehicle)
-    {:ok, charge_state} = ExTesla.get_charge_state(client, vehicle)
-    {:ok, climate_state} = ExTesla.get_climate_state(client, vehicle)
-    {:ok, drive_state} = ExTesla.get_drive_state(client, vehicle)
+        case length(result) do
+          1 -> {:ok, hd(result)}
+          0 -> {:error, "Cannot find vehicle #{vin}."}
+          l -> {:error, "Got too many results looking for #{vin}, got #{l} results."}
+        end
 
-    state = %{
-      "date_time" => DateTime.utc_now,
-
-      "vehicle" => vehicle["display_name"],
-
-      "odometer" => ExTesla.convert_miles_to_km(vehicle_state["odometer"]),
-
-      "charge_energy_added" => charge_state["charge_energy_added"],
-      "time_to_full_charge" => charge_state["time_to_full_charge"],
-      "battery_level" => charge_state["battery_level"],
-      "est_battery_range" => ExTesla.convert_miles_to_km(charge_state["est_battery_range"]),
-      "ideal_battery_range" => ExTesla.convert_miles_to_km(charge_state["ideal_battery_range"]),
-      "battery_range" => ExTesla.convert_miles_to_km(charge_state["battery_range"]),
-
-      "outside_temp" => climate_state["outside_temp"],
-      "inside_temp" => climate_state["inside_temp"],
-
-      "heading" => drive_state["heading"],
-      "latitude" => drive_state["latitude"],
-      "longitude" => drive_state["longitude"],
-      "speed" => drive_state["speed"],
-    }
-
-    delta_time = DateTime.diff(state["date_time"], previous_state["date_time"])
-    delta_odometer = Float.round(state["odometer"] - previous_state["odometer"], 1)
-    delta_charge_energy_added = if state["charge_energy_added"] == 0.0 do
-      0.0
-    else
-      Float.round(state["charge_energy_added"] - previous_state["charge_energy_added"], 2)
+      {:error, msg} ->
+        {:error, msg}
     end
+  end
 
-    battery_left = state["ideal_battery_range"]
-    battery_charge_km = 384 - battery_left
-    battery_charge_time = Float.round(battery_charge_km / 36, 2)
-
-    extra_data = %{
-      "delta_time" => delta_time,
-      "delta_odometer" => delta_odometer,
-      "delta_charge_energy_added" => delta_charge_energy_added,
-      "battery_charge_time" => battery_charge_time
+  defp process_state(vehicle, vehicle_state, charge_state, climate_state, drive_state) do
+    state = %TeNerves.History{
+      vin: vehicle["vin"],
+      date_time: DateTime.utc_now(),
+      odometer: ExTesla.convert_miles_to_km(vehicle_state["odometer"]),
+      charge_energy_added: decimal(charge_state["charge_energy_added"]),
+      time_to_full_charge: decimal(charge_state["time_to_full_charge"]),
+      battery_level: charge_state["battery_level"],
+      est_battery_range: ExTesla.convert_miles_to_km(charge_state["est_battery_range"]),
+      ideal_battery_range: ExTesla.convert_miles_to_km(charge_state["ideal_battery_range"]),
+      battery_range: ExTesla.convert_miles_to_km(charge_state["battery_range"]),
+      outside_temp: decimal(climate_state["outside_temp"]),
+      inside_temp: decimal(climate_state["inside_temp"]),
+      heading: drive_state["heading"],
+      latitude: drive_state["latitude"],
+      longitude: drive_state["longitude"],
+      speed: ExTesla.convert_miles_to_km(drive_state["speed"])
     }
 
-    {state, extra_data}
+    previous_query =
+      from(h in TeNerves.History,
+        where: h.vin == ^vehicle["vin"],
+        order_by: [desc: h.date_time],
+        limit: 1
+      )
+
+    previous_state = TeNerves.Repo.one(previous_query)
+
+    state =
+      if is_nil(previous_state) do
+        state
+      else
+        delta_time = DateTime.diff(state.date_time, previous_state.date_time)
+        delta_odometer = Decimal.sub(state.odometer, previous_state.odometer)
+
+        delta_charge_energy_added =
+          if state.charge_energy_added == 0.0 do
+            0.0
+          else
+            Decimal.sub(state.charge_energy_added, previous_state.charge_energy_added)
+          end
+
+        %TeNerves.History{
+          state
+          | delta_time: delta_time,
+            delta_odometer: delta_odometer,
+            delta_charge_energy_added: delta_charge_energy_added
+        }
+      end
+
+    battery_left = state.ideal_battery_range
+    battery_charge_km = Decimal.sub(384, battery_left)
+    battery_charge_time = Decimal.div(battery_charge_km, 36) |> Decimal.round(2)
+
+    state = %TeNerves.History{
+      state
+      | battery_charge_time: battery_charge_time
+    }
+
+    TeNerves.Repo.insert!(state)
+  end
+
+  defp poll_tesla(client, vin) do
+    with {:ok, vehicle} <- get_vehicle_by_vin(client, vin),
+         {:ok, vehicle_state} <- ExTesla.get_vehicle_state(client, vehicle),
+         {:ok, charge_state} <- ExTesla.get_charge_state(client, vehicle),
+         {:ok, climate_state} <- ExTesla.get_climate_state(client, vehicle),
+         {:ok, drive_state} <- ExTesla.get_drive_state(client, vehicle) do
+      process_state(vehicle, vehicle_state, charge_state, climate_state, drive_state)
+    else
+      {:error, msg} -> {:error, msg}
+    end
   end
 
   def poll_and_update() do
     vin = @vin
 
-    state_file = Path.join([@output_directory, "state.json"])
-    results_file = Path.join([@output_directory, "results.json"])
-
-    {:ok, token} = ExTesla.get_token
-    {:ok, token} = ExTesla.check_token(token)
-
-    client = ExTesla.client(token)
-
-    previous_state = File.read!(state_file) |> Jason.decode!()
-    {state, extra_data} = poll_tesla(client, vin, previous_state)
-
-    encoded = Jason.encode!(state) <> "\n"
-    :ok = File.write(state_file, encoded)
-
-    merged = Map.merge(state, extra_data)
-    IO.inspect(merged)
-    encoded = Jason.encode!(merged) <> "\n"
-    :ok = File.write(results_file, encoded, [:append])
+    with {:ok, token} <- ExTesla.get_token(),
+         {:ok, token} <- ExTesla.check_token(token) do
+      client = ExTesla.client(token)
+      poll_tesla(client, vin)
+    else
+      {:error, msg} -> Logger.warn("Got error #{msg}")
+    end
   end
 end

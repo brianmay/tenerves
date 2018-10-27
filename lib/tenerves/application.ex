@@ -19,7 +19,8 @@ defmodule Tenerves.Application do
     [
       # Starts a worker by calling: Tenerves.Worker.start_link(arg)
       # {Tenerves.Worker, arg},
-      {TeNerves.Scheduler, []}
+      {TeNerves.Scheduler, []},
+      {TeNerves.Repo, []}
     ]
   end
 end
