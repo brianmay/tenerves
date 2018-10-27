@@ -1,4 +1,4 @@
-defmodule Tenerves.MixProject do
+defmodule TeNerves.MixProject do
   use Mix.Project
 
   @target System.get_env("MIX_TARGET") || "host"
@@ -30,7 +30,7 @@ defmodule Tenerves.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      mod: {Tenerves.Application, []},
+      mod: {TeNerves.Application, []},
       extra_applications: [:logger, :runtime_tools]
     ]
   end
@@ -45,7 +45,9 @@ defmodule Tenerves.MixProject do
       {:timex, "~> 3.0"},
       {:ex_tesla, path: "../ex_tesla"},
       {:ecto, "~> 2.0"},
-      {:postgrex, "~> 0.11"}
+      {:postgrex, "~> 0.11"},
+      {:tortoise, "~> 0.9.2"},
+      {:jason, "~> 1.1"},
     ] ++ deps(@target)
   end
 

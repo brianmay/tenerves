@@ -5,6 +5,11 @@ defmodule TeNerves do
   import Ecto.Query
   require Logger
 
+  defmodule CarState do
+    @enforce_keys [:vehicle, :vehicle_state, :charge_state, :climate_state, :drive_state, :history]
+    defstruct [:vehicle, :vehicle_state, :charge_state, :climate_state, :drive_state, :history]
+  end
+
   defp decimal(nil), do: nil
   defp decimal(v), do: Decimal.new(v)
 
@@ -83,7 +88,21 @@ defmodule TeNerves do
       | battery_charge_time: battery_charge_time
     }
 
-    TeNerves.Repo.insert(state)
+    case TeNerves.Repo.insert(state) do
+      {:ok, _} -> nil
+      {:error, msg} -> Logger.error("Error inserting record #{msg}.")
+    end
+
+    car_state = %CarState{
+      vehicle: vehicle,
+      vehicle_state: vehicle_state,
+      charge_state: charge_state,
+      climate_state: climate_state,
+      drive_state: drive_state,
+      history: state,
+    }
+
+    {:ok, car_state}
   end
 
   def poll_tesla(client, vin) do
