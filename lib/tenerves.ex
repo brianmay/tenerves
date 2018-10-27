@@ -5,8 +5,6 @@ defmodule TeNerves do
   import Ecto.Query
   require Logger
 
-  @vin Application.get_env(:tenerves, :vin)
-
   defp decimal(nil), do: nil
   defp decimal(v), do: Decimal.new(v)
 
@@ -26,7 +24,7 @@ defmodule TeNerves do
     end
   end
 
-  defp process_state(vehicle, vehicle_state, charge_state, climate_state, drive_state) do
+  def process_state(vehicle, vehicle_state, charge_state, climate_state, drive_state) do
     state = %TeNerves.History{
       vin: vehicle["vin"],
       date_time: DateTime.utc_now(),
@@ -85,10 +83,10 @@ defmodule TeNerves do
       | battery_charge_time: battery_charge_time
     }
 
-    TeNerves.Repo.insert!(state)
+    TeNerves.Repo.insert(state)
   end
 
-  defp poll_tesla(client, vin) do
+  def poll_tesla(client, vin) do
     with {:ok, vehicle} <- get_vehicle_by_vin(client, vin),
          {:ok, vehicle_state} <- ExTesla.get_vehicle_state(client, vehicle),
          {:ok, charge_state} <- ExTesla.get_charge_state(client, vehicle),
@@ -97,18 +95,6 @@ defmodule TeNerves do
       process_state(vehicle, vehicle_state, charge_state, climate_state, drive_state)
     else
       {:error, msg} -> {:error, msg}
-    end
-  end
-
-  def poll_and_update() do
-    vin = @vin
-
-    with {:ok, token} <- ExTesla.get_token(),
-         {:ok, token} <- ExTesla.check_token(token) do
-      client = ExTesla.client(token)
-      poll_tesla(client, vin)
-    else
-      {:error, msg} -> Logger.warn("Got error #{msg}")
     end
   end
 end

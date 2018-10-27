@@ -20,9 +20,7 @@ config :shoehorn,
     :nerves_network,
     :nerves_time,
     :nerves_init_gadget,
-    :lifx,
-    {RoboticaNerves.Application, :config, []},
-    :robotica
+    :tenerves
   ],
   app: Mix.Project.config()[:app]
 
@@ -70,7 +68,7 @@ config :tenerves,
 config :tenerves, TeNerves.Scheduler,
   jobs: [
     # Every 15 minutes
-    {"*/15 * * * *", fn -> TeNerves.poll_and_update() end}
+    {"*/15 * * * *", {TeNerves.Poller, :poll, [TeNerves.Poller]}}
   ]
 
 config :tenerves, TeNerves.Repo,
