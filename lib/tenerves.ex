@@ -93,10 +93,14 @@ defmodule TeNerves do
       | battery_charge_time: battery_charge_time
     }
 
-    case TeNerves.Repo.insert(state) do
-      {:ok, _} -> nil
-      {:error, msg} -> Logger.error("Error inserting record #{msg}.")
-    end
+    state =
+      case TeNerves.Repo.insert(state) do
+        {:ok, new_state} ->
+          new_state
+        {:error, msg} ->
+          Logger.error("Error inserting record #{msg}.")
+          state
+      end
 
     car_state = %{
       vehicle: vehicle,
