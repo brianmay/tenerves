@@ -65,7 +65,7 @@ config :tenerves,
   vin: System.get_env("VIN"),
   ecto_repos: [TeNerves.Repo],
   mqtt_host: System.get_env("MQTT_HOST"),
-  mqtt_port: String.to_integer(System.get_env("MQTT_PORT") || "1883")
+  mqtt_port: String.to_integer(System.get_env("MQTT_PORT") || "1883"),
 
 config :tenerves, TeNerves.Scheduler,
   jobs: [

@@ -6,8 +6,8 @@ defmodule TeNerves do
   require Logger
 
   defmodule CarState do
-    @enforce_keys [:vehicle, :vehicle_state, :charge_state, :climate_state, :drive_state, :history]
-    defstruct [:vehicle, :vehicle_state, :charge_state, :climate_state, :drive_state, :history]
+    @enforce_keys [:vehicle, :history]
+    defstruct [:vehicle, :history]
   end
 
   defp decimal(nil), do: nil
@@ -29,7 +29,12 @@ defmodule TeNerves do
     end
   end
 
-  def process_state(vehicle, vehicle_state, charge_state, climate_state, drive_state) do
+  def process_state(vehicle) do
+    vehicle_state = vehicle["vehicle_state"]
+    charge_state = vehicle["charge_state"]
+    climate_state = vehicle["climate_state"]
+    drive_state = vehicle["drive_state"]
+
     state = %TeNerves.History{
       vin: vehicle["vin"],
       date_time: DateTime.utc_now(),
@@ -93,13 +98,9 @@ defmodule TeNerves do
       {:error, msg} -> Logger.error("Error inserting record #{msg}.")
     end
 
-    car_state = %CarState{
+    car_state = %{
       vehicle: vehicle,
-      vehicle_state: vehicle_state,
-      charge_state: charge_state,
-      climate_state: climate_state,
-      drive_state: drive_state,
-      history: state,
+      history: state
     }
 
     {:ok, car_state}
@@ -107,11 +108,8 @@ defmodule TeNerves do
 
   def poll_tesla(client, vin) do
     with {:ok, vehicle} <- get_vehicle_by_vin(client, vin),
-         {:ok, vehicle_state} <- ExTesla.get_vehicle_state(client, vehicle),
-         {:ok, charge_state} <- ExTesla.get_charge_state(client, vehicle),
-         {:ok, climate_state} <- ExTesla.get_climate_state(client, vehicle),
-         {:ok, drive_state} <- ExTesla.get_drive_state(client, vehicle) do
-      process_state(vehicle, vehicle_state, charge_state, climate_state, drive_state)
+         {:ok, vehicle} <- ExTesla.get_vehicle_data(client, vehicle) do
+      process_state(vehicle)
     else
       {:error, msg} -> {:error, msg}
     end

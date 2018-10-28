@@ -48,6 +48,7 @@ defmodule TeNerves.MixProject do
       {:postgrex, "~> 0.11"},
       {:tortoise, "~> 0.9.2"},
       {:jason, "~> 1.1"},
+      {:geocalc, "~> 0.5"}
     ] ++ deps(@target)
   end
 

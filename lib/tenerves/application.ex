@@ -34,8 +34,7 @@ defmodule TeNerves.Application do
        client_id: get_tortoise_client_id(),
        handler: {Tortoise.Handler.Logger, []},
        server: {Tortoise.Transport.Tcp, host: @mqtt_host, port: @mqtt_port},
-       subscriptions: []
-      }
+       subscriptions: []}
     ]
   end
 end

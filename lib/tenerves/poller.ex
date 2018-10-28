@@ -30,7 +30,6 @@ defmodule TeNerves.Poller do
       with {:ok, token} <- ExTesla.check_token(state.token),
            client = ExTesla.client(token),
            {:ok, car_state} = TeNerves.poll_tesla(client, vin) do
-
         robotica_data = TeNerves.Robotica.process(car_state, state.robotica_data)
         %State{token: token, robotica_data: robotica_data}
       else
