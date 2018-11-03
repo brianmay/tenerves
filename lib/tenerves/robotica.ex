@@ -120,9 +120,10 @@ defmodule TeNerves.Robotica do
       longitude: drive_state["longitude"]
     }
 
-    charger_plugged_in = case charge_state["charging_state"] do
-      nil -> previous_state.charger_plugged_in
-      "Disconnected" -> false
+    charger_plugged_in = case {charge_state["charging_state"], previous_state} do
+      {nil, nil} -> false
+      {nil, _} -> previous_state.charger_plugged_in
+      {"Disconnected", _} -> false
       _ -> true
     end
 
