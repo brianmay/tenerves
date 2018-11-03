@@ -5,8 +5,8 @@ defmodule TeNerves.Robotica do
   @home Application.get_env(:tenerves, :home)
 
   defmodule State do
-    @enforce_keys [:is_home, :charger_plugged_in]
-    defstruct [:is_home, :charger_plugged_in]
+    @enforce_keys [:is_home, :charger_plugged_in, :battery_level, :unlocked_time]
+    defstruct [:is_home, :charger_plugged_in, :battery_level, :unlocked_time]
   end
 
   defp is_after_time(utc_now, time) do
@@ -19,43 +19,27 @@ defmodule TeNerves.Robotica do
     Timex.compare(utc_now, threshold_time) >= 0
   end
 
-  defp get_messages(car_state, previous_state, state) do
+  defp get_messages(state, previous_state) do
     utc_now = Timex.now()
     after_threshold = is_after_time(utc_now, ~T[19:00:00])
 
-    vehicle_state = car_state.vehicle["vehicle_state"]
+    unlocked_delta =
+      case state.unlocked_time do
+        nil -> nil
+        unlocked_time -> Timex.diff(utc_now, unlocked_time, :seconds)
+      end
+
+    IO.inspect(state.unlocked_time)
+    IO.inspect(unlocked_delta)
 
     rules = [
       {
-        vehicle_state["df"] > 0,
-        "The Tesla driver front door is open."
+        not is_nil(unlocked_delta) and unlocked_delta >= 5,
+        "The Tesla has been unlocked for more then 5 minutes."
       },
       {
-        vehicle_state["dr"] > 0,
-        "The Tesla driver rear door is open."
-      },
-      {
-        vehicle_state["pf"] > 0,
-        "The Tesla passenger front door is open."
-      },
-      {
-        vehicle_state["pr"] > 0,
-        "The Tesla passenger rear door is open."
-      },
-      {
-        vehicle_state["ft"] > 0,
-        "The Tesla front trunk is open."
-      },
-      {
-        vehicle_state["rt"] > 0,
-        "The Tesla rear trunk is open."
-      },
-      {
-        not vehicle_state["locked"],
-        "The Tesla is unlocked."
-      },
-      {
-         after_threshold and car_state.history.battery_level < 80 and not state.charger_plugged_in and state.is_home,
+        after_threshold and state.battery_level < 80 and not state.charger_plugged_in and
+          state.is_home,
         "The Tesla is not plugged in, please plug in the Tesla."
       },
       {
@@ -63,11 +47,13 @@ defmodule TeNerves.Robotica do
         "The Tesla has not returned, it might be lost - please help the Tesla find its way home."
       },
       {
-        not is_nil(previous_state) and previous_state.charger_plugged_in and not state.charger_plugged_in,
+        not is_nil(previous_state) and previous_state.charger_plugged_in and
+          not state.charger_plugged_in,
         "The Tesla has been disconnected."
       },
       {
-        not is_nil(previous_state) and not previous_state.charger_plugged_in and state.charger_plugged_in,
+        not is_nil(previous_state) and not previous_state.charger_plugged_in and
+          state.charger_plugged_in,
         "The Tesla has been plugged in."
       },
       {
@@ -81,8 +67,8 @@ defmodule TeNerves.Robotica do
     ]
 
     rules
-      |> Enum.filter(fn {cond, _} -> cond end)
-      |> Enum.map(fn {_, msg} -> msg end)
+    |> Enum.filter(fn {cond, _} -> cond end)
+    |> Enum.map(fn {_, msg} -> msg end)
   end
 
   defp send_messages([]), do: nil
@@ -112,6 +98,7 @@ defmodule TeNerves.Robotica do
   end
 
   def process(car_state, previous_state) do
+    vehicle_state = car_state.vehicle["vehicle_state"]
     drive_state = car_state.vehicle["drive_state"]
     charge_state = car_state.vehicle["charge_state"]
 
@@ -120,23 +107,39 @@ defmodule TeNerves.Robotica do
       longitude: drive_state["longitude"]
     }
 
-    charger_plugged_in = case {charge_state["charging_state"], previous_state} do
-      {nil, nil} -> false
-      {nil, _} -> previous_state.charger_plugged_in
-      {"Disconnected", _} -> false
-      _ -> true
-    end
+    charger_plugged_in =
+      case {charge_state["charging_state"], previous_state} do
+        {nil, nil} -> false
+        {nil, _} -> previous_state.charger_plugged_in
+        {"Disconnected", _} -> false
+        _ -> true
+      end
+
+    previous_unlocked_time =
+      case previous_state do
+        nil -> nil
+        state -> state.unlocked_time
+      end
+
+    unlocked_time =
+      case {vehicle_state["locked"], previous_unlocked_time} do
+        {true, _} -> nil
+        {false, nil} -> Timex.now()
+        {false, previous_unlocked_time} -> previous_unlocked_time
+      end
 
     state = %State{
       is_home: Geocalc.distance_between(point, @home) < 100,
-      charger_plugged_in: charger_plugged_in
+      charger_plugged_in: charger_plugged_in,
+      battery_level: car_state.history.battery_level,
+      unlocked_time: unlocked_time
     }
 
     IO.inspect(car_state)
     IO.inspect(previous_state)
     IO.inspect(state)
 
-    get_messages(car_state, previous_state, state) |> send_messages()
+    get_messages(state, previous_state) |> send_messages()
 
     state
   end
