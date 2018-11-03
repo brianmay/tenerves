@@ -10,9 +10,6 @@ defmodule TeNerves do
     defstruct [:vehicle, :history]
   end
 
-  defp decimal(nil), do: nil
-  defp decimal(v), do: Decimal.new(v)
-
   defp get_vehicle_by_vin(client, vin) do
     case ExTesla.list_all_vehicles(client) do
       {:ok, result} ->
@@ -39,14 +36,14 @@ defmodule TeNerves do
       vin: vehicle["vin"],
       date_time: DateTime.utc_now(),
       odometer: ExTesla.convert_miles_to_km(vehicle_state["odometer"]),
-      charge_energy_added: decimal(charge_state["charge_energy_added"]),
-      time_to_full_charge: decimal(charge_state["time_to_full_charge"]),
+      charge_energy_added: charge_state["charge_energy_added"],
+      time_to_full_charge: charge_state["time_to_full_charge"],
       battery_level: charge_state["battery_level"],
       est_battery_range: ExTesla.convert_miles_to_km(charge_state["est_battery_range"]),
       ideal_battery_range: ExTesla.convert_miles_to_km(charge_state["ideal_battery_range"]),
       battery_range: ExTesla.convert_miles_to_km(charge_state["battery_range"]),
-      outside_temp: decimal(climate_state["outside_temp"]),
-      inside_temp: decimal(climate_state["inside_temp"]),
+      outside_temp: climate_state["outside_temp"],
+      inside_temp: climate_state["inside_temp"],
       heading: drive_state["heading"],
       latitude: drive_state["latitude"],
       longitude: drive_state["longitude"],
@@ -67,13 +64,13 @@ defmodule TeNerves do
         state
       else
         delta_time = DateTime.diff(state.date_time, previous_state.date_time)
-        delta_odometer = Decimal.sub(state.odometer, previous_state.odometer)
+        delta_odometer = state.odometer - previous_state.odometer
 
         delta_charge_energy_added =
           if state.charge_energy_added == 0.0 do
             0.0
           else
-            Decimal.sub(state.charge_energy_added, previous_state.charge_energy_added)
+            state.charge_energy_added - previous_state.charge_energy_added
           end
 
         %TeNerves.History{
@@ -85,8 +82,8 @@ defmodule TeNerves do
       end
 
     battery_left = state.ideal_battery_range
-    battery_charge_km = Decimal.sub(384, battery_left)
-    battery_charge_time = Decimal.div(battery_charge_km, 36) |> Decimal.round(2)
+    battery_charge_km = 384 - battery_left
+    battery_charge_time = battery_charge_km / 36
 
     state = %TeNerves.History{
       state
