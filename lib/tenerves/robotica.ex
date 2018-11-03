@@ -5,12 +5,8 @@ defmodule TeNerves.Robotica do
   @home Application.get_env(:tenerves, :home)
 
   defmodule State do
-    @enforce_keys [:is_home, :charger_power]
-    defstruct [:is_home, :charger_power]
-  end
-
-  defp prepend_if_true(list, cond, extra) do
-    if cond, do: [extra | list], else: list
+    @enforce_keys [:is_home, :charger_plugged_in]
+    defstruct [:is_home, :charger_plugged_in]
   end
 
   defp is_after_time(utc_now, time) do
@@ -29,46 +25,64 @@ defmodule TeNerves.Robotica do
 
     vehicle_state = car_state.vehicle["vehicle_state"]
 
-    messages =
-      []
-      |> prepend_if_true(vehicle_state["df"] == 1, "DF is set")
+    rules = [
+      {
+        vehicle_state["df"] > 0,
+        "The Tesla driver front door is open."
+      },
+      {
+        vehicle_state["dr"] > 0,
+        "The Tesla driver rear door is open."
+      },
+      {
+        vehicle_state["pf"] > 0,
+        "The Tesla passenger front door is open."
+      },
+      {
+        vehicle_state["pr"] > 0,
+        "The Tesla passenger rear door is open."
+      },
+      {
+        vehicle_state["ft"] > 0,
+        "The Tesla front trunk is open."
+      },
+      {
+        vehicle_state["rt"] > 0,
+        "The Tesla rear trunk is open."
+      },
+      {
+        not vehicle_state["locked"],
+        "The Tesla is unlocked."
+      },
+      {
+         after_threshold and car_state.history.battery_level < 80 and not state.charger_plugged_in and state.is_home,
+        "The Tesla is not plugged in, please plug in the Tesla."
+      },
+      {
+        after_threshold and not state.is_home,
+        "The Tesla has not returned, it might be lost - please help the Tesla find its way home."
+      },
+      {
+        not is_nil(previous_state) and previous_state.charger_plugged_in and not state.charger_plugged_in,
+        "The Tesla has been disconnected."
+      },
+      {
+        not is_nil(previous_state) and not previous_state.charger_plugged_in and state.charger_plugged_in,
+        "The Tesla has been plugged in."
+      },
+      {
+        not is_nil(previous_state) and previous_state.is_home and not state.is_home,
+        "The Tesla has been stolen."
+      },
+      {
+        not is_nil(previous_state) and not previous_state.is_home and state.is_home,
+        "The Tesla has been returned."
+      }
+    ]
 
-    messages =
-      if after_threshold do
-        messages
-        |> prepend_if_true(
-          car_state.history.battery_level < 80 and not state.charger_power and state.is_home,
-          "The Tesla is not plugged in, please plug in the Tesla"
-        )
-        |> prepend_if_true(not state.is_home, "The Tesla has not been returned")
-      else
-        messages
-      end
-
-    messages =
-      if is_nil(previous_state) do
-        messages
-      else
-        messages
-        |> prepend_if_true(
-          previous_state.charger_power and not state.charger_power,
-          "The Tesla has been disconnected"
-        )
-        |> prepend_if_true(
-          not previous_state.charger_power and state.charger_power,
-          "The Tesla has been plugged in"
-        )
-        |> prepend_if_true(
-          previous_state.is_home and not state.is_home,
-          "The Tesla has been stolen"
-        )
-        |> prepend_if_true(
-          not previous_state.is_home and state.is_home,
-          "The Tesla has been returned"
-        )
-      end
-
-    messages
+    rules
+      |> Enum.filter(fn {cond, _} -> cond end)
+      |> Enum.map(fn {_, msg} -> msg end)
   end
 
   defp send_messages([]), do: nil
@@ -78,7 +92,7 @@ defmodule TeNerves.Robotica do
       "locations" => ["Brian", "Dining"],
       "actions" => [
         %{
-          "message" => %{"text" => Enum.join(messages, "; ") <> "."}
+          "message" => %{"text" => Enum.join(messages, " ")}
         }
       ]
     }
@@ -106,9 +120,15 @@ defmodule TeNerves.Robotica do
       longitude: drive_state["longitude"]
     }
 
+    charger_plugged_in = case charge_state["charging_state"] do
+      nil -> previous_state.charger_plugged_in
+      "Disconnected" -> false
+      _ -> true
+    end
+
     state = %State{
       is_home: Geocalc.distance_between(point, @home) < 100,
-      charger_power: charge_state["charger_power"] == 1
+      charger_plugged_in: charger_plugged_in
     }
 
     IO.inspect(car_state)

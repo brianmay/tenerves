@@ -97,6 +97,7 @@ defmodule TeNerves do
       case TeNerves.Repo.insert(state) do
         {:ok, new_state} ->
           new_state
+
         {:error, msg} ->
           Logger.error("Error inserting record #{msg}.")
           state
