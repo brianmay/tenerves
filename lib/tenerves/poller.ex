@@ -96,7 +96,7 @@ defmodule TeNerves.Poller do
 
   def handle_info(:timer, %State{next_time: next_time} = state) do
     now = DateTime.utc_now()
-    earliest_time = Timex.shift(next_time, seconds: -1)
+    earliest_time = next_time
     latest_time = Timex.shift(next_time, minutes: 1)
 
     new_state =
