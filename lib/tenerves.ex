@@ -26,7 +26,7 @@ defmodule TeNerves do
     end
   end
 
-  def process_state(vehicle) do
+  def process_vehicle_data(vehicle) do
     vehicle_state = vehicle["vehicle_state"]
     charge_state = vehicle["charge_state"]
     climate_state = vehicle["climate_state"]
@@ -115,7 +115,7 @@ defmodule TeNerves do
   def poll_tesla(client, vin) do
     with {:ok, vehicle} <- get_vehicle_by_vin(client, vin),
          {:ok, vehicle} <- ExTesla.get_vehicle_data(client, vehicle) do
-      process_state(vehicle)
+      process_vehicle_data(vehicle)
     else
       {:error, msg} -> {:error, msg}
     end
