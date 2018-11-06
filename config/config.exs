@@ -20,6 +20,7 @@ config :shoehorn,
     :nerves_network,
     :nerves_time,
     :nerves_init_gadget,
+    :postgrex,
     :tenerves
   ],
   app: Mix.Project.config()[:app]
@@ -60,6 +61,10 @@ config :nerves_init_gadget,
 # configuring ring_logger.
 
 config :logger, backends: [RingLogger]
+
+config :logger, RingLogger, max_size: 2048
+
+config :tzdata, :autoupdate, :disabled
 
 config :tenerves,
   vin: System.get_env("VIN"),
