@@ -2,11 +2,11 @@ defmodule TeNerves.History do
   @moduledoc false
 
   use Ecto.Schema
-  @timestamps_opts [type: :utc_datetime, usec: true]
+  @timestamps_opts [type: :utc_datetime_usec]
 
   schema "history" do
     field(:vin, :string)
-    field(:date_time, :utc_datetime)
+    field(:date_time, :utc_datetime_usec)
     field(:odometer, :float)
     field(:charge_energy_added, :float)
     field(:time_to_full_charge, :float)

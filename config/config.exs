@@ -73,8 +73,8 @@ config :tenerves,
   mqtt_port: String.to_integer(System.get_env("MQTT_PORT") || "1883"),
 
 config :tenerves, TeNerves.Repo,
-  adapter: Ecto.Adapters.Postgres,
-  url: System.get_env("DATABASE_URL")
+  url: System.get_env("DATABASE_URL"),
+  migration_timestamps: [type: :utc_datetime_usec]
 
 # Import target specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

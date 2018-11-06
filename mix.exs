@@ -43,8 +43,8 @@ defmodule TeNerves.MixProject do
       {:ring_logger, "~> 0.4"},
       {:timex, "~> 3.0"},
       {:ex_tesla, "~> 0.0"},
-      {:ecto, "~> 2.0"},
-      {:postgrex, "~> 0.11"},
+      {:ecto_sql, "~> 3.0"},
+      {:postgrex, "~> 0.14"},
       {:tortoise, "~> 0.9.2"},
       {:jason, "~> 1.1"},
       {:geocalc, "~> 0.5"}
