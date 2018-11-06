@@ -32,9 +32,11 @@ defmodule TeNerves do
     climate_state = vehicle["climate_state"]
     drive_state = vehicle["drive_state"]
 
+    date_time = DateTime.utc_now()
+
     state = %TeNerves.History{
       vin: vehicle["vin"],
-      date_time: DateTime.utc_now(),
+      date_time: date_time,
       odometer: ExTesla.convert_miles_to_km(vehicle_state["odometer"]),
       charge_energy_added: charge_state["charge_energy_added"],
       time_to_full_charge: charge_state["time_to_full_charge"],
@@ -47,7 +49,9 @@ defmodule TeNerves do
       heading: drive_state["heading"],
       latitude: drive_state["latitude"],
       longitude: drive_state["longitude"],
-      speed: ExTesla.convert_miles_to_km(drive_state["speed"])
+      speed: ExTesla.convert_miles_to_km(drive_state["speed"]),
+      inserted_at: date_time,
+      updated_at: date_time
     }
 
     previous_query =
