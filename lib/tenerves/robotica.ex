@@ -43,10 +43,6 @@ defmodule TeNerves.Robotica do
         "The Tesla is not plugged in, please plug in the Tesla."
       },
       {
-        after_threshold and not state.is_home,
-        "The Tesla has not returned, it might be lost - please help the Tesla find its way home."
-      },
-      {
         not is_nil(previous_state) and previous_state.charger_plugged_in and
           not state.charger_plugged_in,
         "The Tesla has been disconnected."
