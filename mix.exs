@@ -56,7 +56,11 @@ defmodule TeNerves.MixProject do
 
   defp deps(target) do
     [
-      {:nerves_runtime, "~> 0.6"}
+      {:nerves_runtime, "~> 0.6"},
+      {:nerves_network, "~> 0.3"},
+      {:nerves_time, "~> 0.2.0"},
+      {:nerves_init_gadget, "~> 0.4"},
+      {:dns, "~> 2.1.2"}
     ] ++ system(target)
   end
 
