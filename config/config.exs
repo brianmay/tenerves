@@ -67,12 +67,6 @@ config :tenerves,
   mqtt_host: System.get_env("MQTT_HOST"),
   mqtt_port: String.to_integer(System.get_env("MQTT_PORT") || "1883"),
 
-config :tenerves, TeNerves.Scheduler,
-  jobs: [
-    # Every 15 minutes
-    {"*/15 * * * *", {TeNerves.Poller, :poll, [TeNerves.Poller]}}
-  ]
-
 config :tenerves, TeNerves.Repo,
   adapter: Ecto.Adapters.Postgres,
   url: System.get_env("DATABASE_URL")
