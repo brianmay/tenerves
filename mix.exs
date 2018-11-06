@@ -42,7 +42,7 @@ defmodule TeNerves.MixProject do
       {:shoehorn, "~> 0.4"},
       {:ring_logger, "~> 0.4"},
       {:timex, "~> 3.0"},
-      {:ex_tesla, path: "../ex_tesla"},
+      {:ex_tesla, "~> 0.0"},
       {:ecto, "~> 2.0"},
       {:postgrex, "~> 0.11"},
       {:tortoise, "~> 0.9.2"},
