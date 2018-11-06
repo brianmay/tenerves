@@ -71,10 +71,10 @@ defmodule TeNerves do
         delta_odometer = state.odometer - previous_state.odometer
 
         delta_charge_energy_added =
-          if state.charge_energy_added == 0.0 do
-            0.0
-          else
-            state.charge_energy_added - previous_state.charge_energy_added
+          cond do
+            state.charge_energy_added == 0.0 -> 0.0
+            state.charge_energy_added < previous_state.charge_energy_added -> 0.0
+            true -> state.charge_energy_added - previous_state.charge_energy_added
           end
 
         %TeNerves.History{
