@@ -23,6 +23,11 @@ defmodule TeNerves.Robotica do
     utc_now = Timex.now()
     after_threshold = is_after_time(utc_now, ~T[19:00:00])
 
+    day_of_week =
+      utc_now
+      |> Timex.Timezone.convert("Australia/Melbourne")
+      |> Date.day_of_week()
+
     unlocked_delta =
       case state.unlocked_time do
         nil -> nil
@@ -39,7 +44,12 @@ defmodule TeNerves.Robotica do
       },
       {
         after_threshold and state.battery_level < 80 and not state.charger_plugged_in and
-          state.is_home,
+          state.is_home and day_of_week != 4,
+        "The Tesla is not plugged in, please plug in the Tesla."
+      },
+      {
+        is_after_time(utc_now, ~T[21:30:00]) and state.battery_level < 80 and not state.charger_plugged_in and
+          state.is_home and day_of_week == 4,
         "The Tesla is not plugged in, please plug in the Tesla."
       },
       {
