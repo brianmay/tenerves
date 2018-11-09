@@ -76,7 +76,7 @@ defmodule TeNerves.Robotica do
 
   defp log_messages(messages) do
     Enum.each(messages, fn message ->
-      Logger.info("Got message: #{message}.")
+      Logger.info("Got message: #{message}")
     end)
     messages
   end
