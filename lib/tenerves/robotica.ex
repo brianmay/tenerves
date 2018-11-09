@@ -34,9 +34,6 @@ defmodule TeNerves.Robotica do
         unlocked_time -> Timex.diff(utc_now, unlocked_time, :seconds)
       end
 
-    IO.inspect(state.unlocked_time)
-    IO.inspect(unlocked_delta)
-
     rules = [
       {
         not is_nil(unlocked_delta) and unlocked_delta >= 5,
@@ -77,6 +74,13 @@ defmodule TeNerves.Robotica do
     |> Enum.map(fn {_, msg} -> msg end)
   end
 
+  defp log_messages(messages) do
+    Enum.each(messages, fn message ->
+      Logger.info("Got message: #{message}.")
+    end)
+    messages
+  end
+
   defp send_messages([]), do: nil
 
   defp send_messages(messages) do
@@ -88,8 +92,6 @@ defmodule TeNerves.Robotica do
         }
       ]
     }
-
-    IO.inspect(action)
 
     case Jason.encode(action) do
       {:ok, message} ->
@@ -103,7 +105,7 @@ defmodule TeNerves.Robotica do
     nil
   end
 
-  def process(car_state, previous_state) do
+  def get_state(car_state, previous_state) do
     vehicle_state = car_state.vehicle["vehicle_state"]
     drive_state = car_state.vehicle["drive_state"]
     charge_state = car_state.vehicle["charge_state"]
@@ -141,11 +143,17 @@ defmodule TeNerves.Robotica do
       unlocked_time: unlocked_time
     }
 
-    IO.inspect(car_state)
-    IO.inspect(previous_state)
-    IO.inspect(state)
+    Logger.debug("State: #{inspect(state)}.")
 
-    get_messages(state, previous_state) |> send_messages()
+    state
+  end
+
+  def process(car_state, previous_state) do
+    state = get_state(car_state, previous_state)
+
+    get_messages(state, previous_state)
+    |> log_messages()
+    |> send_messages()
 
     state
   end
