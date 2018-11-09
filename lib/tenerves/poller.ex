@@ -55,9 +55,10 @@ defmodule TeNerves.Poller do
   end
 
   def get_next_time(now) do
+    interval = 5 * 60
     seconds = Timex.to_unix(now)
-    units = div(seconds, 15 * 60) + 1
-    Timex.from_unix(units * 15 * 60)
+    units = div(seconds, interval) + 1
+    Timex.from_unix(units * interval)
   end
 
   defp maximum(v, max) when v > max, do: max
