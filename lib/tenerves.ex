@@ -114,7 +114,7 @@ defmodule TeNerves do
 
   def poll_tesla(client, vin, tries \\ 3)
 
-  def poll_tesla(_client, _vin, 0)  do
+  def poll_tesla(_client, _vin, 0) do
     Logger.warn("Error polling Tesla too many retries.")
     {:error, "Too many failed attempts"}
   end
@@ -125,8 +125,8 @@ defmodule TeNerves do
       process_vehicle_data(vehicle)
     else
       {:error, msg} ->
-        Logger.warn("Error polling Tesla #{msg}, retrying #{tries-1}.")
-        poll_tesla(client, vin, tries-1)
+        Logger.warn("Error polling Tesla #{msg}, retrying #{tries - 1}.")
+        poll_tesla(client, vin, tries - 1)
     end
   end
 end
