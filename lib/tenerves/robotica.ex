@@ -41,12 +41,17 @@ defmodule TeNerves.Robotica do
       },
       {
         after_threshold and state.battery_level < 80 and not state.charger_plugged_in and
-          state.is_home and day_of_week != 4,
+          state.is_home and day_of_week not in [4, 7],
         "The Tesla is not plugged in, please plug in the Tesla."
       },
       {
-        is_after_time(utc_now, ~T[21:30:00]) and state.battery_level < 80 and not state.charger_plugged_in and
-          state.is_home and day_of_week == 4,
+        is_after_time(utc_now, ~T[21:30:00]) and state.battery_level < 80 and
+          not state.charger_plugged_in and state.is_home and day_of_week in [4],
+        "The Tesla is not plugged in, please plug in the Tesla."
+      },
+      {
+        is_after_time(utc_now, ~T[21:00:00]) and state.battery_level < 80 and
+          not state.charger_plugged_in and state.is_home and day_of_week in [7],
         "The Tesla is not plugged in, please plug in the Tesla."
       },
       {
@@ -78,6 +83,7 @@ defmodule TeNerves.Robotica do
     Enum.each(messages, fn message ->
       Logger.info("Got message: #{message}")
     end)
+
     messages
   end
 
