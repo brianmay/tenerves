@@ -21,7 +21,7 @@ defmodule TeNerves.Robotica do
 
   defp get_messages(state, previous_state) do
     utc_now = Timex.now()
-    after_threshold = is_after_time(utc_now, ~T[19:00:00])
+    after_threshold = is_after_time(utc_now, ~T[20:00:00])
 
     day_of_week =
       utc_now
@@ -36,8 +36,8 @@ defmodule TeNerves.Robotica do
 
     rules = [
       {
-        not is_nil(unlocked_delta) and unlocked_delta >= 5,
-        "The Tesla has been unlocked for more then 5 minutes."
+        not is_nil(unlocked_delta) and unlocked_delta >= 10,
+        "The Tesla has been unlocked for more then 10 minutes."
       },
       {
         after_threshold and state.battery_level < 80 and not state.charger_plugged_in and
