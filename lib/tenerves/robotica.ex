@@ -102,7 +102,7 @@ defmodule TeNerves.Robotica do
     case Jason.encode(action) do
       {:ok, message} ->
         client_id = TeNerves.Application.get_tortoise_client_id()
-        :ok = Tortoise.publish(client_id, "/execute/", message, qos: 0)
+        :ok = Tortoise.publish(client_id, "execute", message, qos: 0)
 
       {:error, _msg} ->
         Logger.error("Error encoding JSON.")
