@@ -92,11 +92,9 @@ defmodule TeNerves.Robotica do
   defp send_messages(messages) do
     action = %{
       "locations" => ["Brian", "Dining"],
-      "actions" => [
-        %{
-          "message" => %{"text" => Enum.join(messages, " ")}
-        }
-      ]
+      "action" => %{
+        "message" => %{"text" => Enum.join(messages, " ")}
+      }
     }
 
     case Jason.encode(action) do
