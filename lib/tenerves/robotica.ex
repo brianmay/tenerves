@@ -36,6 +36,14 @@ defmodule TeNerves.Robotica do
 
     rules = [
       {
+        not is_nil(previous_state) and previous_state.is_home and not state.is_home,
+        "The Tesla has left home."
+      },
+      {
+        not is_nil(previous_state) and not previous_state.is_home and state.is_home,
+        "The Tesla has returned home."
+      },
+      {
         not is_nil(unlocked_delta) and unlocked_delta >= 10,
         "The Tesla has been unlocked for more then 10 minutes."
       },
@@ -63,14 +71,6 @@ defmodule TeNerves.Robotica do
         not is_nil(previous_state) and not previous_state.charger_plugged_in and
           state.charger_plugged_in,
         "The Tesla has been plugged in."
-      },
-      {
-        not is_nil(previous_state) and previous_state.is_home and not state.is_home,
-        "The Tesla has been stolen."
-      },
-      {
-        not is_nil(previous_state) and not previous_state.is_home and state.is_home,
-        "The Tesla has been returned."
       }
     ]
 
