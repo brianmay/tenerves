@@ -6,6 +6,9 @@ defmodule TeNerves.Application do
   @target Mix.Project.config()[:target]
   @mqtt_host Application.get_env(:tenerves, :mqtt_host)
   @mqtt_port Application.get_env(:tenerves, :mqtt_port)
+  @ca_cert_file Application.get_env(:tenerves, :ca_cert_file)
+  @user_name Application.get_env(:tenerves, :user_name)
+  @password Application.get_env(:tenerves, :password)
 
   use Application
 
@@ -32,7 +35,15 @@ defmodule TeNerves.Application do
       {Tortoise.Connection,
        client_id: get_tortoise_client_id(),
        handler: {Tortoise.Handler.Logger, []},
-       server: {Tortoise.Transport.Tcp, host: @mqtt_host, port: @mqtt_port},
+       user_name: @user_name,
+       password: @password,
+       server:
+         {
+           Tortoise.Transport.SSL,
+           host: @mqtt_host,
+           port: @mqtt_port,
+           cacertfile: @ca_cert_file,
+         },
        subscriptions: []}
     ]
   end

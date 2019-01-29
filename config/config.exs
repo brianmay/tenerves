@@ -70,7 +70,11 @@ config :tenerves,
   vin: System.get_env("VIN"),
   ecto_repos: [TeNerves.Repo],
   mqtt_host: System.get_env("MQTT_HOST"),
-  mqtt_port: String.to_integer(System.get_env("MQTT_PORT") || "1883"),
+  mqtt_port: String.to_integer(System.get_env("MQTT_PORT") || "8883"),
+  ca_cert_file: System.get_env("CA_CERT_FILE"),
+  user_name: System.get_env("USER_NAME"),
+  password: System.get_env("PASSWORD"),
+  home: [0,0]
 
 config :tenerves, TeNerves.Repo,
   url: System.get_env("DATABASE_URL"),
