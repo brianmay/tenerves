@@ -64,7 +64,7 @@ config :logger, backends: [RingLogger]
 
 config :logger, RingLogger, max_size: 2048
 
-config :tzdata, :autoupdate, :disabled
+config :tzdata, :data_dir, "/root/elixir_tzdata_data"
 
 config :tenerves,
   vin: System.get_env("VIN"),
