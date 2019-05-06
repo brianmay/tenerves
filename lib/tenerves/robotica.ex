@@ -5,8 +5,8 @@ defmodule TeNerves.Robotica do
   @home Application.get_env(:tenerves, :home)
 
   defmodule State do
-    @enforce_keys [:is_home, :charger_plugged_in, :battery_level, :unlocked_time]
-    defstruct [:is_home, :charger_plugged_in, :battery_level, :unlocked_time]
+    @enforce_keys [:is_home, :charger_plugged_in, :battery_level, :unlocked_time, :unlocked_delta]
+    defstruct [:is_home, :charger_plugged_in, :battery_level, :unlocked_time, :unlocked_delta]
   end
 
   defp is_after_time(utc_now, time) do
@@ -19,8 +19,7 @@ defmodule TeNerves.Robotica do
     Timex.compare(utc_now, threshold_time) >= 0
   end
 
-  defp get_messages(state, previous_state) do
-    utc_now = Timex.now()
+  defp get_messages(state, previous_state, utc_now) do
     after_threshold = is_after_time(utc_now, ~T[20:00:00])
 
     day_of_week =
@@ -28,55 +27,65 @@ defmodule TeNerves.Robotica do
       |> Timex.Timezone.convert("Australia/Melbourne")
       |> Date.day_of_week()
 
-    unlocked_delta =
-      case state.unlocked_time do
-        nil -> nil
-        unlocked_time -> Timex.diff(utc_now, unlocked_time, :seconds)
+    previous_unlocked_delta =
+      cond do
+        is_nil(previous_state) -> nil
+        true -> previous_state.unlocked_delta
       end
+
+    unlocked_delta = state.unlocked_delta
 
     rules = [
       {
         not is_nil(previous_state) and previous_state.is_home and not state.is_home,
-        "The Tesla has left home."
+        fn -> "The Tesla has left home." end
       },
       {
         not is_nil(previous_state) and not previous_state.is_home and state.is_home,
-        "The Tesla has returned home."
+        fn -> "The Tesla has returned home." end
       },
       {
-        not is_nil(unlocked_delta) and unlocked_delta >= 10,
-        "The Tesla has been unlocked for more then 10 minutes."
+        not is_nil(unlocked_delta) and unlocked_delta >= 9 * 60,
+        fn -> "The Tesla has been unlocked for #{div(unlocked_delta, 60)} minutes." end
+      },
+      {
+        is_nil(unlocked_delta) and not is_nil(previous_unlocked_delta) and
+          previous_unlocked_delta >= 9 * 60,
+        fn ->
+          "The Tesla has been locked after being unlocked " <>
+            "for #{div(previous_unlocked_delta, 60)} minutes."
+        end
       },
       {
         after_threshold and state.battery_level < 80 and not state.charger_plugged_in and
           state.is_home and day_of_week not in [4, 7],
-        "The Tesla is not plugged in, please plug in the Tesla."
+        fn -> "The Tesla is not plugged in, please plug in the Tesla." end
       },
       {
         is_after_time(utc_now, ~T[21:30:00]) and state.battery_level < 80 and
           not state.charger_plugged_in and state.is_home and day_of_week in [4],
-        "The Tesla is not plugged in, please plug in the Tesla."
+        fn -> "The Tesla is not plugged in, please plug in the Tesla." end
       },
       {
         is_after_time(utc_now, ~T[21:00:00]) and state.battery_level < 80 and
           not state.charger_plugged_in and state.is_home and day_of_week in [7],
-        "The Tesla is not plugged in, please plug in the Tesla."
+        fn -> "The Tesla is not plugged in, please plug in the Tesla." end
       },
       {
         not is_nil(previous_state) and previous_state.charger_plugged_in and
           not state.charger_plugged_in,
-        "The Tesla has been disconnected."
+        fn -> "The Tesla has been disconnected." end
       },
       {
         not is_nil(previous_state) and not previous_state.charger_plugged_in and
           state.charger_plugged_in,
-        "The Tesla has been plugged in."
+        fn -> "The Tesla has been plugged in." end
       }
     ]
 
     rules
     |> Enum.filter(fn {cond, _} -> cond end)
-    |> Enum.map(fn {_, msg} -> msg end)
+    |> Enum.map(fn {_, msg} -> msg.() end)
   end
 
   defp log_messages(messages) do
@@ -109,7 +118,7 @@ defmodule TeNerves.Robotica do
     nil
   end
 
-  def get_state(car_state, previous_state) do
+  def get_state(car_state, previous_state, utc_now) do
     vehicle_state = car_state.vehicle["vehicle_state"]
     drive_state = car_state.vehicle["drive_state"]
     charge_state = car_state.vehicle["charge_state"]
@@ -140,11 +149,18 @@ defmodule TeNerves.Robotica do
         {false, previous_unlocked_time} -> previous_unlocked_time
       end
 
+    unlocked_delta =
+      case unlocked_time do
+        nil -> nil
+        unlocked_time -> Timex.diff(utc_now, unlocked_time, :seconds)
+      end
+
     state = %State{
       is_home: Geocalc.distance_between(point, @home) < 100,
       charger_plugged_in: charger_plugged_in,
       battery_level: car_state.history.battery_level,
-      unlocked_time: unlocked_time
+      unlocked_time: unlocked_time,
+      unlocked_delta: unlocked_delta
     }
 
     Logger.debug("State: #{inspect(state)}.")
@@ -153,9 +169,11 @@ defmodule TeNerves.Robotica do
   end
 
   def process(car_state, previous_state) do
-    state = get_state(car_state, previous_state)
+    utc_now = Timex.now()
 
-    get_messages(state, previous_state)
+    state = get_state(car_state, previous_state, utc_now)
+
+    get_messages(state, previous_state, utc_now)
     |> log_messages()
     |> send_messages()
 
