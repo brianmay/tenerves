@@ -37,13 +37,10 @@ defmodule TeNerves.Application do
        handler: {Tortoise.Handler.Logger, []},
        user_name: @user_name,
        password: @password,
-       server:
-         {
-           Tortoise.Transport.SSL,
-           host: @mqtt_host,
-           port: @mqtt_port,
-           cacertfile: @ca_cert_file,
-         },
+       server: {
+         Tortoise.Transport.SSL,
+         host: @mqtt_host, port: @mqtt_port, cacertfile: @ca_cert_file
+       },
        subscriptions: []}
     ]
   end
