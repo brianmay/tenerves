@@ -7,8 +7,8 @@ defmodule TeNerves.Application do
   @mqtt_host Application.get_env(:tenerves, :mqtt_host)
   @mqtt_port Application.get_env(:tenerves, :mqtt_port)
   @ca_cert_file Application.get_env(:tenerves, :ca_cert_file)
-  @user_name Application.get_env(:tenerves, :user_name)
-  @password Application.get_env(:tenerves, :password)
+  @user_name Application.get_env(:tenerves, :mqtt_user_name)
+  @password Application.get_env(:tenerves, :mqtt_password)
 
   use Application
 
