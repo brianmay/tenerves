@@ -32,6 +32,7 @@ defmodule TeNerves.Application do
       # {Tenerves.Worker, arg},
       {TeNerves.Repo, []},
       {TeNerves.Poller, name: TeNerves.Poller},
+      {TeNerves.Market, name: TeNerves.Market},
       {Tortoise.Connection,
        client_id: get_tortoise_client_id(),
        handler: {Tortoise.Handler.Logger, []},
