@@ -85,9 +85,8 @@ defmodule TeNerves do
         }
       end
 
-    battery_left = state.ideal_battery_range
-    battery_charge_km = 384 - battery_left
-    battery_charge_time = battery_charge_km / 36
+    estimated_charge_duration = TeNerves.Estimator.my_charge_time(state.battery_level)
+    battery_charge_time = Timex.Duration.to_hours(estimated_charge_duration)
 
     state = %TeNerves.History{
       state
