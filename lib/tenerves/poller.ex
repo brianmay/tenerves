@@ -56,8 +56,7 @@ defmodule TeNerves.Poller do
 
   def get_next_time(now) do
     interval = 5 * 60
-    time = TeNerves.Times.round_time(now, interval, 1)
-    Timex.add(time, Timex.Duration.from_minutes(1))
+    TeNerves.Times.round_time(now, interval, 1)
   end
 
   defp maximum(v, max) when v > max, do: max
