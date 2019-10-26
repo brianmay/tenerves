@@ -16,7 +16,7 @@ defmodule TeNerves.Poller do
   end
 
   def poll(pid) do
-    Logger.debug("Got poll request")
+    Logger.debug("TeNerves.Poller: Got poll request")
     GenServer.call(pid, :poll, 30000)
   end
 
@@ -30,7 +30,7 @@ defmodule TeNerves.Poller do
 
   defp handle_poll(state) do
     vin = @vin
-    Logger.debug("Begin poll #{vin}")
+    Logger.debug("TeNerves.Poller: Begin poll #{vin}")
 
     new_state =
       with {:ok, token} <- ExTesla.check_token(state.token),
@@ -45,20 +45,19 @@ defmodule TeNerves.Poller do
         }
       else
         {:error, msg} ->
-          Logger.warn("Got error #{msg}")
+          Logger.warn("TeNerves.Poller: Got error #{msg}")
           state
       end
 
-    Logger.debug("End poll")
+    Logger.debug("TeNerves.Poller: End poll")
 
     new_state
   end
 
   def get_next_time(now) do
     interval = 5 * 60
-    seconds = Timex.to_unix(now)
-    units = div(seconds, interval) + 1
-    Timex.from_unix(units * interval)
+    time = TeNerves.Times.round_time(now, interval, 1)
+    Timex.add(time, Timex.Duration.from_minutes(1))
   end
 
   defp maximum(v, max) when v > max, do: max
@@ -80,7 +79,7 @@ defmodule TeNerves.Poller do
     milliseconds = maximum(milliseconds, 60 * 1000)
     milliseconds = minimum(milliseconds, 0)
 
-    Logger.debug("Sleeping #{milliseconds} for #{inspect(next_time)}.")
+    Logger.debug("TeNerves.Poller: Sleeping #{milliseconds} for #{inspect(next_time)}.")
     timer = Process.send_after(self(), :timer, milliseconds)
 
     %State{
@@ -103,13 +102,13 @@ defmodule TeNerves.Poller do
     new_state =
       cond do
         Timex.before?(now, earliest_time) ->
-          Logger.debug("Timer received too early for #{next_time}.")
+          Logger.debug("TeNerves.Poller: Timer received too early for #{next_time}.")
 
           state
           |> set_timer()
 
         Timex.before?(now, latest_time) ->
-          Logger.debug("Timer received on time for #{next_time}.")
+          Logger.debug("TeNerves.Poller: Timer received on time for #{next_time}.")
 
           state
           |> handle_poll()
@@ -117,7 +116,7 @@ defmodule TeNerves.Poller do
           |> set_timer()
 
         true ->
-          Logger.debug("Timer received too late for #{next_time}.")
+          Logger.debug("TeNerves.Poller: Timer received too late for #{next_time}.")
 
           state
           |> Map.put(:next_time, nil)
