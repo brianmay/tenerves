@@ -6,6 +6,7 @@ defmodule TeNerves.Robotica do
 
   defmodule State do
     @enforce_keys [:is_home, :charger_plugged_in, :battery_level, :unlocked_time, :unlocked_delta]
+    @derive Jason.Encoder
     defstruct [:is_home, :charger_plugged_in, :battery_level, :unlocked_time, :unlocked_delta]
   end
 
@@ -118,6 +119,33 @@ defmodule TeNerves.Robotica do
     nil
   end
 
+  def send_state(car_state, state) do
+    history = car_state.history
+
+    vehicle =
+      car_state.vehicle
+      |> Map.delete("tokens")
+      |> Map.delete("id")
+      |> Map.delete("id_s")
+
+    state_message = %{
+      "vehicle" => vehicle,
+      "history" => history,
+      "state" => state
+    }
+
+    case Jason.encode(state_message) do
+      {:ok, message} ->
+        client_id = TeNerves.Application.get_tortoise_client_id()
+        :ok = Tortoise.publish(client_id, "tesla", message, qos: 0)
+
+      {:error, _msg} ->
+        Logger.error("Error encoding JSON.")
+    end
+
+    nil
+  end
+
   def get_state(car_state, previous_state, utc_now) do
     vehicle_state = car_state.vehicle["vehicle_state"]
     drive_state = car_state.vehicle["drive_state"]
@@ -176,6 +204,8 @@ defmodule TeNerves.Robotica do
     get_messages(state, previous_state, utc_now)
     |> log_messages()
     |> send_messages()
+
+    send_state(car_state, state)
 
     state
   end

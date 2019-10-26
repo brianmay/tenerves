@@ -4,6 +4,29 @@ defmodule TeNerves.History do
   use Ecto.Schema
   @timestamps_opts [type: :utc_datetime_usec]
 
+  @derive {Jason.Encoder,
+           only: [
+             :vin,
+             :date_time,
+             :odometer,
+             :charge_energy_added,
+             :time_to_full_charge,
+             :battery_level,
+             :est_battery_range,
+             :ideal_battery_range,
+             :battery_range,
+             :outside_temp,
+             :inside_temp,
+             :heading,
+             :latitude,
+             :longitude,
+             :speed,
+             :delta_time,
+             :delta_odometer,
+             :delta_charge_energy_added,
+             :battery_charge_time
+           ]}
+
   schema "history" do
     field(:vin, :string)
     field(:date_time, :utc_datetime_usec)
