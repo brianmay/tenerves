@@ -64,8 +64,6 @@ config :logger, backends: [RingLogger]
 
 config :logger, RingLogger, max_size: 2048
 
-config :tzdata, :data_dir, "/root/elixir_tzdata_data"
-
 config :tenerves,
   vin: System.get_env("VIN"),
   ecto_repos: [TeNerves.Repo],
@@ -85,3 +83,4 @@ config :tenerves, TeNerves.Repo,
 # Uncomment to use target specific configurations
 
 import_config "secrets.exs"
+import_config "#{Mix.Project.config()[:target]}.exs"
