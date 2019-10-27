@@ -119,7 +119,7 @@ defmodule TeNerves.Robotica do
     nil
   end
 
-  def send_state(car_state, state) do
+  defp send_state(car_state, state) do
     history = car_state.history
 
     vehicle =
@@ -146,7 +146,7 @@ defmodule TeNerves.Robotica do
     nil
   end
 
-  def get_state(car_state, previous_state, utc_now) do
+  defp get_state(car_state, previous_state, utc_now) do
     vehicle_state = car_state.vehicle["vehicle_state"]
     drive_state = car_state.vehicle["drive_state"]
     charge_state = car_state.vehicle["charge_state"]
