@@ -159,7 +159,7 @@ defmodule TeNerves.Robotica do
     charger_plugged_in =
       case {charge_state["charging_state"], previous_state} do
         {nil, nil} -> false
-        {nil, _} -> previous_state.charger_plugged_in
+        {nil, state} -> state.charger_plugged_in
         {"Disconnected", _} -> false
         _ -> true
       end
