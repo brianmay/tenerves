@@ -72,7 +72,7 @@ config :tenerves,
   ca_cert_file: System.get_env("CA_CERT_FILE"),
   mqtt_user_name: System.get_env("MQTT_USER_NAME"),
   mqtt_password: System.get_env("MQTT_PASSWORD"),
-  home: [0,0]
+  home: [0, 0]
 
 config :tenerves, TeNerves.Repo,
   url: System.get_env("DATABASE_URL"),
