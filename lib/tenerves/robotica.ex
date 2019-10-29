@@ -48,16 +48,21 @@ defmodule TeNerves.Robotica do
 
     unlocked_delta = state.unlocked_delta
 
-    was_at_home = previous_state.distance_from_home < 100
+    was_at_home =
+      cond do
+        is_nil(previous_state) -> nil
+        true -> previous_state.distance_from_home < 100
+      end
+
     now_at_home = state.distance_from_home < 100
 
     rules = [
       {
-        not is_nil(previous_state) and was_at_home and not now_at_home,
+        not is_nil(was_at_home) and was_at_home and not now_at_home,
         fn -> "The Tesla has left home." end
       },
       {
-        not is_nil(previous_state) and not was_at_home and now_at_home,
+        not is_nil(was_at_home) and not was_at_home and now_at_home,
         fn -> "The Tesla has returned home." end
       },
       {
