@@ -5,9 +5,21 @@ defmodule TeNerves.Robotica do
   @home Application.get_env(:tenerves, :home)
 
   defmodule State do
-    @enforce_keys [:is_home, :charger_plugged_in, :battery_level, :unlocked_time, :unlocked_delta]
+    @enforce_keys [
+      :distance_from_home,
+      :charger_plugged_in,
+      :battery_level,
+      :unlocked_time,
+      :unlocked_delta
+    ]
     @derive Jason.Encoder
-    defstruct [:is_home, :charger_plugged_in, :battery_level, :unlocked_time, :unlocked_delta]
+    defstruct [
+      :distance_from_home,
+      :charger_plugged_in,
+      :battery_level,
+      :unlocked_time,
+      :unlocked_delta
+    ]
   end
 
   defp is_after_time(utc_now, time) do
@@ -36,13 +48,16 @@ defmodule TeNerves.Robotica do
 
     unlocked_delta = state.unlocked_delta
 
+    was_at_home = previous_state.distance_from_home < 100
+    now_at_home = state.distance_from_home < 100
+
     rules = [
       {
-        not is_nil(previous_state) and previous_state.is_home and not state.is_home,
+        not is_nil(previous_state) and was_at_home and not now_at_home,
         fn -> "The Tesla has left home." end
       },
       {
-        not is_nil(previous_state) and not previous_state.is_home and state.is_home,
+        not is_nil(previous_state) and not was_at_home and now_at_home,
         fn -> "The Tesla has returned home." end
       },
       {
@@ -184,7 +199,7 @@ defmodule TeNerves.Robotica do
       end
 
     state = %State{
-      is_home: Geocalc.distance_between(point, @home) < 100,
+      distance_from_home: Geocalc.distance_between(point, @home),
       charger_plugged_in: charger_plugged_in,
       battery_level: car_state.history.battery_level,
       unlocked_time: unlocked_time,
