@@ -26,13 +26,26 @@ defmodule TeNerves do
     end
   end
 
-  def process_vehicle_data(vehicle) do
+  defp get_prev_entry(vehicle) do
+    previous_query =
+      from(h in TeNerves.History,
+        where: h.vin == ^vehicle["vin"],
+        order_by: [desc: h.date_time],
+        limit: 1
+      )
+
+    TeNerves.Repo.one(previous_query)
+  end
+
+  defp get_new_entry(vehicle, previous_state, date_time) do
     vehicle_state = vehicle["vehicle_state"]
     charge_state = vehicle["charge_state"]
     climate_state = vehicle["climate_state"]
     drive_state = vehicle["drive_state"]
+    battery_level = charge_state["battery_level"]
 
-    date_time = DateTime.utc_now()
+    estimated_charge_duration = TeNerves.Estimator.my_charge_time(battery_level)
+    battery_charge_time = Timex.Duration.to_hours(estimated_charge_duration)
 
     state = %TeNerves.History{
       vin: vehicle["vin"],
@@ -40,6 +53,7 @@ defmodule TeNerves do
       odometer: ExTesla.convert_miles_to_km(vehicle_state["odometer"]),
       charge_energy_added: charge_state["charge_energy_added"],
       time_to_full_charge: charge_state["time_to_full_charge"],
+      battery_charge_time: battery_charge_time,
       battery_level: charge_state["battery_level"],
       est_battery_range: ExTesla.convert_miles_to_km(charge_state["est_battery_range"]),
       ideal_battery_range: ExTesla.convert_miles_to_km(charge_state["ideal_battery_range"]),
@@ -54,53 +68,40 @@ defmodule TeNerves do
       updated_at: date_time
     }
 
-    previous_query =
-      from(h in TeNerves.History,
-        where: h.vin == ^vehicle["vin"],
-        order_by: [desc: h.date_time],
-        limit: 1
-      )
-
-    previous_state = TeNerves.Repo.one(previous_query)
-
-    state =
-      if is_nil(previous_state) do
-        state
-      else
-        delta_time = DateTime.diff(state.date_time, previous_state.date_time)
-        delta_odometer = state.odometer - previous_state.odometer
-
-        delta_charge_energy_added =
-          cond do
-            state.charge_energy_added == 0.0 -> 0.0
-            state.charge_energy_added < previous_state.charge_energy_added -> 0.0
-            true -> state.charge_energy_added - previous_state.charge_energy_added
-          end
-
-        %TeNerves.History{
-          state
-          | delta_time: delta_time,
-            delta_odometer: delta_odometer,
-            delta_charge_energy_added: delta_charge_energy_added
-        }
-      end
-
-    estimated_charge_duration = TeNerves.Estimator.my_charge_time(state.battery_level)
-    battery_charge_time = Timex.Duration.to_hours(estimated_charge_duration)
-
-    state = %TeNerves.History{
+    if is_nil(previous_state) do
       state
-      | battery_charge_time: battery_charge_time
-    }
+    else
+      delta_time = DateTime.diff(state.date_time, previous_state.date_time)
+      delta_odometer = state.odometer - previous_state.odometer
+
+      delta_charge_energy_added =
+        cond do
+          state.charge_energy_added == 0.0 -> 0.0
+          state.charge_energy_added < previous_state.charge_energy_added -> 0.0
+          true -> state.charge_energy_added - previous_state.charge_energy_added
+        end
+
+      %TeNerves.History{
+        state
+        | delta_time: delta_time,
+          delta_odometer: delta_odometer,
+          delta_charge_energy_added: delta_charge_energy_added
+      }
+    end
+  end
+
+  defp process_vehicle_data(date_time, vehicle) do
+    previous_state = get_prev_entry(vehicle)
+    new_state = get_new_entry(vehicle, previous_state, date_time)
 
     state =
-      case TeNerves.Repo.insert(state) do
-        {:ok, new_state} ->
-          new_state
+      case TeNerves.Repo.insert(new_state) do
+        {:ok, state} ->
+          state
 
         {:error, msg} ->
           Logger.error("Error inserting record #{msg}.")
-          state
+          new_state
       end
 
     car_state = %{
@@ -121,7 +122,8 @@ defmodule TeNerves do
   def poll_tesla(client, vin, tries) do
     with {:ok, vehicle} <- get_vehicle_by_vin(client, vin),
          {:ok, vehicle} <- ExTesla.get_vehicle_data(client, vehicle) do
-      process_vehicle_data(vehicle)
+      date_time = DateTime.utc_now()
+      process_vehicle_data(date_time, vehicle)
     else
       {:error, msg} ->
         Logger.warn("Error polling Tesla #{msg}, retrying #{tries - 1}.")
