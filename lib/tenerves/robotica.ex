@@ -77,7 +77,7 @@ defmodule TeNerves.Robotica do
         fn -> "The Tesla has returned home." end
       },
       {
-        not is_nil(unlocked_delta) and unlocked_delta >= 9 * 60,
+        not is_nil(unlocked_delta) and unlocked_delta >= 9 * 60 and warning_ok,
         fn -> "The Tesla has been unlocked for #{div(unlocked_delta, 60)} minutes." end
       },
       {
