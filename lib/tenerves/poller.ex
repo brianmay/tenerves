@@ -55,7 +55,7 @@ defmodule TeNerves.Poller do
   end
 
   def get_next_time(now) do
-    interval = 5 * 60
+    interval = 60
     TeNerves.Times.round_time(now, interval, 1)
   end
 
@@ -96,7 +96,7 @@ defmodule TeNerves.Poller do
   def handle_info(:timer, %State{next_time: next_time} = state) do
     now = DateTime.utc_now()
     earliest_time = next_time
-    latest_time = Timex.shift(next_time, minutes: 1)
+    latest_time = Timex.shift(next_time, seconds: 10)
 
     new_state =
       cond do
