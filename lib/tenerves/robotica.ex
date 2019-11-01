@@ -10,7 +10,9 @@ defmodule TeNerves.Robotica do
       :charger_plugged_in,
       :battery_level,
       :unlocked_time,
-      :unlocked_delta
+      :unlocked_delta,
+      :next_warning_time,
+      :warning_ok
     ]
     @derive Jason.Encoder
     defstruct [
@@ -18,7 +20,9 @@ defmodule TeNerves.Robotica do
       :charger_plugged_in,
       :battery_level,
       :unlocked_time,
-      :unlocked_delta
+      :unlocked_delta,
+      :next_warning_time,
+      :warning_ok
     ]
   end
 
@@ -33,7 +37,7 @@ defmodule TeNerves.Robotica do
   end
 
   defp get_messages(state, previous_state, utc_now) do
-    after_threshold = is_after_time(utc_now, ~T[20:00:00])
+    warning_ok = state.warning_ok
 
     day_of_week =
       utc_now
@@ -55,6 +59,13 @@ defmodule TeNerves.Robotica do
       end
 
     now_at_home = state.distance_from_home < 100
+
+    begin_charge_time =
+      cond do
+        day_of_week == 4 -> ~T[21:30:00]
+        day_of_week == 7 -> ~T[21:00:00]
+        true -> ~T[20:00:00]
+      end
 
     rules = [
       {
@@ -78,18 +89,8 @@ defmodule TeNerves.Robotica do
         end
       },
       {
-        after_threshold and state.battery_level < 80 and not state.charger_plugged_in and
-          state.is_home and day_of_week not in [4, 7],
-        fn -> "The Tesla is not plugged in, please plug in the Tesla." end
-      },
-      {
-        is_after_time(utc_now, ~T[21:30:00]) and state.battery_level < 80 and
-          not state.charger_plugged_in and state.is_home and day_of_week in [4],
-        fn -> "The Tesla is not plugged in, please plug in the Tesla." end
-      },
-      {
-        is_after_time(utc_now, ~T[21:00:00]) and state.battery_level < 80 and
-          not state.charger_plugged_in and state.is_home and day_of_week in [7],
+        is_after_time(utc_now, begin_charge_time) and state.battery_level < 80 and
+          not state.charger_plugged_in and state.is_home and warning_ok,
         fn -> "The Tesla is not plugged in, please plug in the Tesla." end
       },
       {
@@ -203,12 +204,26 @@ defmodule TeNerves.Robotica do
         unlocked_time -> Timex.diff(utc_now, unlocked_time, :seconds)
       end
 
+    {next_warning_time, warning_ok} =
+      cond do
+        is_nil(previous_state) ->
+          {TeNerves.Times.round_time(utc_now, 10 * 60, 1), true}
+
+        Timex.before?(utc_now, previous_state.next_warning_time) ->
+          {previous_state.next_warning_time, false}
+
+        true ->
+          {TeNerves.Times.round_time(utc_now, 10 * 60, 1), true}
+      end
+
     state = %State{
       distance_from_home: Geocalc.distance_between(point, @home),
       charger_plugged_in: charger_plugged_in,
       battery_level: car_state.history.battery_level,
       unlocked_time: unlocked_time,
-      unlocked_delta: unlocked_delta
+      unlocked_delta: unlocked_delta,
+      next_warning_time: next_warning_time,
+      warning_ok: warning_ok
     }
 
     Logger.debug("State: #{inspect(state)}.")
