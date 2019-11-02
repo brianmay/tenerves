@@ -90,7 +90,7 @@ defmodule TeNerves.Robotica do
       },
       {
         is_after_time(utc_now, begin_charge_time) and state.battery_level < 80 and
-          not state.charger_plugged_in and state.is_home and warning_ok,
+          not state.charger_plugged_in and now_at_home and warning_ok,
         fn -> "The Tesla is not plugged in, please plug in the Tesla." end
       },
       {
