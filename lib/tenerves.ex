@@ -10,6 +10,52 @@ defmodule TeNerves do
     defstruct [:vehicle, :history]
   end
 
+  defmodule Initial do
+    def get_initial_token(email, password) do
+      {:ok, token} = ExTesla.get_token(email, password)
+      token
+    end
+  end
+
+  @initial_token Initial.get_initial_token(
+                   System.get_env("TESLA_EMAIL"),
+                   System.get_env("TESLA_PASSWORD")
+                 )
+  @filename Application.get_env(:tenerves, :tesla_token_file)
+
+  def get_token(nil) do
+    if File.exists?(@filename) do
+      with {:ok, data} <- File.read(@filename),
+           {:ok, token} <- Jason.decode(data) do
+        token =
+          Map.new(token, fn {key, value} ->
+            {String.to_atom(key), value}
+          end)
+
+        token = struct(ExTesla.Api.Token, token)
+
+        token =
+          cond do
+            token.created_at > @initial_token.created_at -> token
+            true -> @initial_token
+          end
+
+        {:ok, token}
+      else
+        {:error, error} -> {:error, error}
+      end
+    else
+      {:ok, @initial_token}
+    end
+  end
+
+  def get_token(%ExTesla.Api.Token{} = token), do: {:ok, token}
+
+  def save_token(%ExTesla.Api.Token{} = token) do
+    File.write(@filename, token |> Jason.encode!())
+    :ok
+  end
+
   defp get_vehicle_by_vin(client, vin) do
     case ExTesla.list_all_vehicles(client) do
       {:ok, result} ->

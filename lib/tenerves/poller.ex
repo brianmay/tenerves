@@ -33,8 +33,10 @@ defmodule TeNerves.Poller do
     Logger.debug("TeNerves.Poller: Begin poll #{vin}")
 
     new_state =
-      with {:ok, token} <- ExTesla.check_token(state.token),
-           client = ExTesla.client(token),
+      with {:ok, token} <- TeNerves.get_token(state.token),
+           {:ok, token} <- ExTesla.check_token(token),
+           :ok <- TeNerves.save_token(token),
+           client <- ExTesla.client(token),
            {:ok, car_state} <- TeNerves.poll_tesla(client, vin) do
         robotica_data = TeNerves.Robotica.process(car_state, state.robotica_data)
 
