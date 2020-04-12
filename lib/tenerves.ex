@@ -12,6 +12,7 @@ defmodule TeNerves do
 
   defmodule Initial do
     def get_initial_token(email, password) do
+      Application.ensure_all_started(:mojito)
       {:ok, token} = ExTesla.get_token(email, password)
       token
     end
@@ -56,8 +57,8 @@ defmodule TeNerves do
     :ok
   end
 
-  defp get_vehicle_by_vin(client, vin) do
-    case ExTesla.list_all_vehicles(client) do
+  defp get_vehicle_by_vin(token, vin) do
+    case ExTesla.list_all_vehicles(token) do
       {:ok, result} ->
         result = Enum.filter(result, fn vehicle -> vehicle["vin"] == vin end)
 
@@ -158,22 +159,22 @@ defmodule TeNerves do
     {:ok, car_state}
   end
 
-  def poll_tesla(client, vin, tries \\ 3)
+  def poll_tesla(token, vin, tries \\ 3)
 
-  def poll_tesla(_client, _vin, 0) do
+  def poll_tesla(_token, _vin, 0) do
     Logger.warn("Error polling Tesla too many retries.")
     {:error, "Too many failed attempts"}
   end
 
-  def poll_tesla(client, vin, tries) do
-    with {:ok, vehicle} <- get_vehicle_by_vin(client, vin),
-         {:ok, vehicle} <- ExTesla.get_vehicle_data(client, vehicle) do
+  def poll_tesla(token, vin, tries) do
+    with {:ok, vehicle} <- get_vehicle_by_vin(token, vin),
+         {:ok, vehicle} <- ExTesla.get_vehicle_data(token, vehicle) do
       date_time = DateTime.utc_now()
       process_vehicle_data(date_time, vehicle)
     else
       {:error, msg} ->
         Logger.warn("Error polling Tesla #{msg}, retrying #{tries - 1}.")
-        poll_tesla(client, vin, tries - 1)
+        poll_tesla(token, vin, tries - 1)
     end
   end
 end

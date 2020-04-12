@@ -36,8 +36,7 @@ defmodule TeNerves.Poller do
       with {:ok, token} <- TeNerves.get_token(state.token),
            {:ok, token} <- ExTesla.check_token(token),
            :ok <- TeNerves.save_token(token),
-           client <- ExTesla.client(token),
-           {:ok, car_state} <- TeNerves.poll_tesla(client, vin) do
+           {:ok, car_state} <- TeNerves.poll_tesla(token, vin) do
         robotica_data = TeNerves.Robotica.process(car_state, state.robotica_data)
 
         %State{
@@ -125,5 +124,10 @@ defmodule TeNerves.Poller do
       end
 
     {:noreply, new_state}
+  end
+
+  def handle_info({:mojito_response, _, _}, %State{} = state) do
+    Logger.error("Got late HTTP response")
+    {:noreply, state}
   end
 end

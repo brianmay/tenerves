@@ -45,12 +45,13 @@ defmodule TeNerves.MixProject do
       {:shoehorn, "~> 0.6"},
       {:ring_logger, "~> 0.4"},
       {:timex, "~> 3.0"},
-      {:ex_tesla, "~> 1.0"},
+      {:ex_tesla, "~> 2.0"},
       {:ecto_sql, "~> 3.0"},
       {:postgrex, "~> 0.15"},
       {:tortoise, "~> 0.9.2"},
       {:jason, "~> 1.1"},
-      {:geocalc, "~> 0.5"},
+      {:geocalc,
+       git: "https://github.com/yltsrc/geocalc", tag: "0bf0b3346f569c1fcf9df284230e7ba637ddc31a"},
       {:httpoison, "~> 1.6"}
     ] ++ deps(@target)
   end
