@@ -1,14 +1,12 @@
 defmodule TeNerves.Poller do
   @moduledoc false
 
-  @vin Application.get_env(:tenerves, :vin)
-
   use GenServer
   require Logger
 
   defmodule State do
-    @enforce_keys [:token, :robotica_data, :timer, :next_time]
-    defstruct [:token, :robotica_data, :timer, :next_time]
+    @enforce_keys [:token, :vehicle, :robotica_data, :timer, :next_time]
+    defstruct [:token, :vehicle, :robotica_data, :timer, :next_time]
   end
 
   def start_link(opts) do
@@ -22,26 +20,36 @@ defmodule TeNerves.Poller do
 
   def init(_opts) do
     state =
-      %State{token: nil, robotica_data: nil, timer: nil, next_time: nil}
+      %State{token: nil, vehicle: nil, robotica_data: nil, timer: nil, next_time: nil}
       |> set_timer()
 
     {:ok, state}
   end
 
+  defp get_vehicle(nil, vin, token) do
+    TeNerves.get_vehicle_by_vin(token, vin)
+  end
+
+  defp get_vehicle(cached_vehicle, _vin, _token) do
+    {:ok, cached_vehicle}
+  end
+
   defp handle_poll(state) do
-    vin = @vin
+    vin = Application.get_env(:tenerves, :vin)
     Logger.debug("TeNerves.Poller: Begin poll #{vin}")
 
     new_state =
       with {:ok, token} <- TeNerves.get_token(state.token),
            {:ok, token} <- ExTesla.check_token(token),
            :ok <- TeNerves.save_token(token),
-           {:ok, car_state} <- TeNerves.poll_tesla(token, vin) do
+           {:ok, vehicle} <- get_vehicle(state.vehicle, vin, token),
+           {:ok, car_state} <- TeNerves.poll_tesla(token, vehicle) do
         robotica_data = TeNerves.Robotica.process(car_state, state.robotica_data)
 
         %State{
           state
           | token: token,
+            vehicle: vehicle,
             robotica_data: robotica_data
         }
       else

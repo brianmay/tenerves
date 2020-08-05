@@ -57,7 +57,7 @@ defmodule TeNerves do
     :ok
   end
 
-  defp get_vehicle_by_vin(token, vin) do
+  def get_vehicle_by_vin(token, vin) do
     case ExTesla.list_all_vehicles(token) do
       {:ok, result} ->
         result = Enum.filter(result, fn vehicle -> vehicle["vin"] == vin end)
@@ -166,15 +166,15 @@ defmodule TeNerves do
     {:error, "Too many failed attempts"}
   end
 
-  def poll_tesla(token, vin, tries) do
-    with {:ok, vehicle} <- get_vehicle_by_vin(token, vin),
-         {:ok, vehicle} <- ExTesla.get_vehicle_data(token, vehicle) do
-      date_time = DateTime.utc_now()
-      process_vehicle_data(date_time, vehicle)
-    else
+  def poll_tesla(token, vehicle, tries) do
+    case ExTesla.get_vehicle_data(token, vehicle) do
+      {:ok, vehicle} ->
+        date_time = DateTime.utc_now()
+        process_vehicle_data(date_time, vehicle)
+
       {:error, msg} ->
         Logger.warn("Error polling Tesla #{msg}, retrying #{tries - 1}.")
-        poll_tesla(token, vin, tries - 1)
+        poll_tesla(token, vehicle, tries - 1)
     end
   end
 end
